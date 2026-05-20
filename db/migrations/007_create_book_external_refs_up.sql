@@ -7,7 +7,7 @@ It prevents webhook and incremental sync code from relying only on video_jobs.
 
 CREATE TABLE IF NOT EXISTS book_external_refs (
     id BIGSERIAL PRIMARY KEY,
-    book_id UUID NOT NULL REFERENCES books(book_id) ON DELETE CASCADE,
+    book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
     source_system VARCHAR(50) NOT NULL,
     external_book_id VARCHAR(200) NOT NULL,
     first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,

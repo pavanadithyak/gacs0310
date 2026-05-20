@@ -1,4 +1,3 @@
-/* Incremental sync cursor state for DID engagement sync */
 CREATE TABLE IF NOT EXISTS did_sync_state (
     sync_name TEXT PRIMARY KEY,
     cursor_updated_at TIMESTAMPTZ,
@@ -12,5 +11,3 @@ CREATE TABLE IF NOT EXISTS did_sync_state (
 
 CREATE INDEX IF NOT EXISTS idx_did_sync_state_last_success_at
     ON did_sync_state(last_success_at DESC);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON did_sync_state TO gacs_user;

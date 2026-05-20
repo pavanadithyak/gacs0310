@@ -1,11 +1,6 @@
 import { Queue } from 'bullmq';
 import redis from './redis.client.js';
 
-/**
- * BullMQ Queue instances
- * Reuses the singleton Redis connection
- */
-
 const queueOptions = { connection: redis };
 
 export const deadLetterQueue = new Queue('dead-letter', queueOptions);

@@ -5,15 +5,15 @@ This function recalculates demand-based generation priority from Smart DID
 engagement signals and writes the final score into video_jobs.priority_score.
 
 Signals used:
-- book_did_engagement.request_count
-- book_did_engagement.ranking_score
-- book_did_engagement.last_requested_at
+- book_engagement.request_count
+- book_engagement.ranking_score
+- book_engagement.last_requested_at
 - video_jobs.did_request_retries
 - video_jobs.expires_at
 - video_jobs.created_at
 */
 
-ALTER TABLE book_did_engagement
+ALTER TABLE book_engagement
     ADD COLUMN IF NOT EXISTS request_count_decayed NUMERIC(12, 4) DEFAULT 0,
     ADD COLUMN IF NOT EXISTS generation_priority_score NUMERIC(12, 4) DEFAULT 0,
     ADD COLUMN IF NOT EXISTS score_last_refreshed_at TIMESTAMPTZ;
@@ -79,7 +79,7 @@ AS $$
                 1.0
             ) AS starvation_signal
 
-        FROM book_did_engagement be
+        FROM book_engagement be
         JOIN video_jobs vj
           ON vj.book_id = be.book_id
         WHERE vj.status NOT IN ('completed', 'cancelled')
@@ -90,7 +90,7 @@ AS $$
     ),
 
     updated_engagement AS (
-        UPDATE book_did_engagement be
+        UPDATE book_engagement be
         SET
             request_count_decayed = scored.decayed_request_signal,
 

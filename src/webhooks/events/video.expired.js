@@ -1,144 +1,62 @@
-/**
- * Handle video.expired event.
- *
- * Expiry is a Smart DID playback-state signal.
- * It should trigger refresh/regeneration work without changing canonical book metadata.
- */
-export async function handle(payload, db, queue) {
-  const {
-    bookId: externalBookId,
-    status = 'expired',
-    expiresAt = null,
-    retryCount = 0,
-    errorMessage = null,
-  } = payload.data || {};
+export async function handle(payload, db) {
+  return insertSyncEvent(payload, db, 'video.expired');
+}
 
-  const eventId = payload.eventId;
+async function insertSyncEvent(payload, db, fallbackEventType) {
+  const eventType = payload.event_type || payload.eventType || fallbackEventType;
+  const bookId = payload.book_id || payload.bookId || payload.data?.bookId;
+  const idempotencyKey =
+    payload.idempotency_key || payload.idempotencyKey || payload.eventId;
 
-  try {
-    if (!externalBookId) {
-      return { status: 'skipped', reason: 'missing_book_id' };
-    }
-
-    const refResult = await db.query(
-      `SELECT book_id
-         FROM book_external_refs
-        WHERE source_system = 'smart_did'
-          AND external_book_id = $1
-        ORDER BY first_seen_at ASC
-        LIMIT 1`,
-      [externalBookId],
-    );
-
-    if (refResult.rows.length === 0) {
-      await enqueue(queue, 'reconciliation', {
-        bookId: externalBookId,
-        eventId,
-        occurredAt: payload.occurredAt,
-        reason: 'unknown_book_id',
-      });
-
-      return {
-        status: 'skipped',
-        reason: 'unknown_book_id_sent_to_reconciliation',
-        enqueued: ['reconciliation'],
-      };
-    }
-
-    const gacsBookId = refResult.rows[0].book_id;
-
-    const tableCheck = await db.query(
-      `SELECT EXISTS (
-         SELECT 1
-           FROM information_schema.tables
-          WHERE table_schema = 'public'
-            AND table_name = 'smart_did_video_state'
-       )`,
-    );
-
-    if (tableCheck.rows[0].exists) {
-      await db.query(
-        `INSERT INTO smart_did_video_state (
-           book_id,
-           status,
-           expires_at,
-           retry_count,
-           error_message,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, NOW())
-         ON CONFLICT (book_id)
-         DO UPDATE SET
-           status = EXCLUDED.status,
-           expires_at = EXCLUDED.expires_at,
-           retry_count = EXCLUDED.retry_count,
-           error_message = EXCLUDED.error_message,
-           updated_at = NOW()
-         WHERE smart_did_video_state.status IS DISTINCT FROM EXCLUDED.status
-            OR smart_did_video_state.expires_at IS DISTINCT FROM EXCLUDED.expires_at
-            OR smart_did_video_state.retry_count IS DISTINCT FROM EXCLUDED.retry_count
-            OR smart_did_video_state.error_message IS DISTINCT FROM EXCLUDED.error_message`,
-        [gacsBookId, status, expiresAt, retryCount, errorMessage],
-      );
-    }
-
-    await db.query(
-      `UPDATE video_jobs
-          SET did_reported_status = $2,
-              expires_at = $3,
-              did_status_synced_at = NOW()
-        WHERE job_id = (
-          SELECT job_id
-            FROM video_jobs
-           WHERE book_id = $1
-           ORDER BY created_at DESC
-           LIMIT 1
-        )
-        AND (
-          did_reported_status IS DISTINCT FROM $2
-          OR expires_at IS DISTINCT FROM $3
-        )`,
-      [gacsBookId, status, expiresAt],
-    );
-
-    await enqueue(queue, 'video-refresh', {
-      bookId: gacsBookId,
-      externalBookId,
-      eventId,
-      expiresAt,
-      reason: 'smart_did_video_expired',
-    });
-
-    return {
-      status: 'ok',
-      bookId: gacsBookId,
-      enqueued: ['video-refresh'],
-    };
-  } catch (err) {
-    console.error(`[video.expired] error: ${err.message}`);
-    return { status: 'error_logged' };
+  if (!bookId) return { status: 'skipped', reason: 'missing_book_id' };
+  if (!idempotencyKey) {
+    return { status: 'skipped', reason: 'missing_idempotency_key' };
   }
-}
 
-async function enqueue(queue, jobName, data) {
-  const target = resolveQueue(queue, jobName);
-  if (!target || typeof target.add !== 'function') return false;
+  await db.query(
+    `INSERT INTO smart_did_sync_events (
+       event_type,
+       book_id,
+       idempotency_key,
+       payload_json,
+       status,
+       received_at,
+       created_at,
+       updated_at
+     )
+     VALUES ($1, $2, $3, $4::jsonb, 'pending', NOW(), NOW(), NOW())
+     ON CONFLICT (idempotency_key)
+     DO NOTHING`,
+    [eventType, bookId, idempotencyKey, JSON.stringify(payload)],
+  );
 
-  await target.add(jobName, data);
-  return true;
-}
+  await db.query(
+    `INSERT INTO did_sync_log (
+       external_book_id,
+       source_system,
+       sync_type,
+       status,
+       idempotency_key,
+       payload_json,
+       synced_at
+     )
+     VALUES ($1, 'smart_did', 'webhook_inbox', 'success', $2, $3::jsonb, NOW())
+     ON CONFLICT (idempotency_key)
+     DO NOTHING`,
+    [
+      bookId,
+      `webhook:${idempotencyKey}`,
+      JSON.stringify({
+        action: 'webhook_received',
+        eventType,
+        payload,
+      }),
+    ],
+  );
 
-function resolveQueue(queue, jobName) {
-  if (!queue) return null;
-  if (typeof queue.add === 'function') return queue;
-
-  const queueByJob = {
-    reconciliation: 'reconciliationQueue',
-    'video-refresh': 'videoRefreshQueue',
-    'video-regeneration': 'videoRegenerationQueue',
-    'sync-alert': 'syncAlertQueue',
-    'dead-letter': 'deadLetterQueue',
+  return {
+    status: 'ok',
+    bookId,
+    queuedForSync: true,
   };
-
-  return queue[queueByJob[jobName]];
 }

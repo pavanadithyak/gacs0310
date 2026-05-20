@@ -134,7 +134,7 @@ export class DidSyncRepository {
 
   async upsertEngagement(client, bookId, record) {
     const result = await client.query(
-      `INSERT INTO book_did_engagement (
+      `INSERT INTO book_engagement (
          book_id,
          source_system,
          request_count,
@@ -153,9 +153,9 @@ export class DidSyncRepository {
          last_requested_at = EXCLUDED.last_requested_at,
          synced_at = NOW(),
          updated_at = NOW()
-       WHERE book_did_engagement.request_count IS DISTINCT FROM EXCLUDED.request_count
-          OR book_did_engagement.ranking_score IS DISTINCT FROM EXCLUDED.ranking_score
-          OR book_did_engagement.last_requested_at IS DISTINCT FROM EXCLUDED.last_requested_at
+       WHERE book_engagement.request_count IS DISTINCT FROM EXCLUDED.request_count
+          OR book_engagement.ranking_score IS DISTINCT FROM EXCLUDED.ranking_score
+          OR book_engagement.last_requested_at IS DISTINCT FROM EXCLUDED.last_requested_at
        RETURNING book_id`,
       [bookId, record.requestCount, record.rankingScore, record.lastRequestedAt],
     );

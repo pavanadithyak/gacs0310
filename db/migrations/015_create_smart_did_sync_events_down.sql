@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS smart_did_sync_events CASCADE;

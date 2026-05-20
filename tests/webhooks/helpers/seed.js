@@ -4,9 +4,9 @@
 
 export async function seedBookWithRef(db, bookId, externalBookId) {
   await db.query(
-    `INSERT INTO books (id, title, author, isbn)
+    `INSERT INTO books (book_id, title, author, isbn)
      VALUES ($1, 'Test Book', 'Test Author', $2)
-     ON CONFLICT (id) DO NOTHING`,
+     ON CONFLICT (book_id) DO NOTHING`,
     [bookId, `isbn-${externalBookId}`],
   );
 
@@ -64,7 +64,7 @@ export async function seedDidSyncState(
 }
 
 export async function cleanTestData(db) {
-  const testBookSubquery = `SELECT id FROM books WHERE title LIKE 'Test%'`;
+  const testBookSubquery = `SELECT book_id FROM books WHERE title LIKE 'Test%'`;
 
   await deleteIfTableExists(
     db,
@@ -75,9 +75,15 @@ export async function cleanTestData(db) {
 
   await deleteIfTableExists(
     db,
-    'did_sync_state',
-    `sync_name LIKE 'test.%'
-     OR sync_name = 'smart_did.video_records'`,
+    'smart_did_sync_events',
+    `book_id LIKE 'test-%'`,
+  );
+
+  await deleteIfTableExists(
+    db,
+    'book_sync_fingerprints',
+    `external_book_id LIKE 'test-%'
+     OR book_id IN (${testBookSubquery})`,
   );
 
   await deleteIfTableExists(
@@ -89,6 +95,12 @@ export async function cleanTestData(db) {
   await deleteIfTableExists(
     db,
     'book_engagement_snapshots',
+    `book_id IN (${testBookSubquery})`,
+  );
+
+  await deleteIfTableExists(
+    db,
+    'book_engagement',
     `book_id IN (${testBookSubquery})`,
   );
 

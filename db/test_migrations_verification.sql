@@ -39,11 +39,8 @@ ORDER BY ordinal_position;
 
 \echo '>>> 3. Showing table structures for new tables...'
 
-\echo 'Table: book_engagement (user engagement)'
+\echo 'Table: book_engagement'
 \d book_engagement
-
-\echo 'Table: book_did_engagement (Smart DID engagement signals)'
-\d book_did_engagement
 
 \echo 'Table: audience_validation'
 \d audience_validation
@@ -56,15 +53,6 @@ ORDER BY ordinal_position;
 
 \echo 'Table: book_external_refs'
 \d book_external_refs
-
-\echo 'Table: smart_did_video_state'
-\d smart_did_video_state
-
-\echo 'Table: book_engagement_snapshots'
-\d book_engagement_snapshots
-
-\echo 'Table: book_recommendation_segments'
-\d book_recommendation_segments
 
 \echo '>>> 4. Listing all public indexes...'
 
@@ -80,14 +68,10 @@ FROM information_schema.table_constraints
 WHERE table_schema = 'public'
   AND table_name IN (
     'book_engagement',
-    'book_did_engagement',
     'audience_validation',
     'did_sync_log',
     'did_sync_state',
-    'book_external_refs',
-    'smart_did_video_state',
-    'book_engagement_snapshots',
-    'book_recommendation_segments'
+    'book_external_refs'
   )
 ORDER BY table_name, constraint_type, constraint_name;
 
@@ -99,14 +83,10 @@ WHERE grantee = 'gacs_user'
   AND table_schema = 'public'
   AND table_name IN (
     'book_engagement',
-    'book_did_engagement',
     'audience_validation',
     'did_sync_log',
     'did_sync_state',
-    'book_external_refs',
-    'smart_did_video_state',
-    'book_engagement_snapshots',
-    'book_recommendation_segments'
+    'book_external_refs'
   )
 ORDER BY table_name, privilege_type;
 
@@ -147,15 +127,15 @@ WHERE sync_name = 'verification.smart_did.video_records';
 DELETE FROM did_sync_state
 WHERE sync_name = 'verification.smart_did.video_records';
 
-\echo '>>> 8. Verifying book_did_engagement changed-only UPSERT syntax...'
+\echo '>>> 8. Verifying book_engagement changed-only UPSERT syntax...'
 
-PREPARE verify_book_did_engagement_upsert (
+PREPARE verify_book_engagement_upsert (
   BIGINT,
   INTEGER,
   NUMERIC,
   TIMESTAMPTZ
 ) AS
-INSERT INTO book_did_engagement (
+INSERT INTO book_engagement (
   book_id,
   source_system,
   request_count,
@@ -183,10 +163,10 @@ DO UPDATE SET
   last_requested_at = EXCLUDED.last_requested_at,
   synced_at = NOW(),
   updated_at = NOW()
-WHERE book_did_engagement.request_count IS DISTINCT FROM EXCLUDED.request_count
-   OR book_did_engagement.ranking_score IS DISTINCT FROM EXCLUDED.ranking_score
-   OR book_did_engagement.last_requested_at IS DISTINCT FROM EXCLUDED.last_requested_at;
+WHERE book_engagement.request_count IS DISTINCT FROM EXCLUDED.request_count
+   OR book_engagement.ranking_score IS DISTINCT FROM EXCLUDED.ranking_score
+   OR book_engagement.last_requested_at IS DISTINCT FROM EXCLUDED.last_requested_at;
 
-DEALLOCATE verify_book_did_engagement_upsert;
+DEALLOCATE verify_book_engagement_upsert;
 
 \echo '>>> Migration verification completed.'

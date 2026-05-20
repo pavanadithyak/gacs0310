@@ -1,0 +1,23 @@
+CREATE TABLE IF NOT EXISTS book_sync_fingerprints (
+    id BIGSERIAL PRIMARY KEY,
+    book_id UUID NOT NULL REFERENCES books(book_id) ON DELETE CASCADE,
+    source_system VARCHAR(50) NOT NULL DEFAULT 'smart_did',
+    external_book_id VARCHAR(200) NOT NULL,
+    fingerprint TEXT NOT NULL,
+    source_updated_at TIMESTAMPTZ,
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_book_sync_fingerprints_source_external
+        UNIQUE (source_system, external_book_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_book_sync_fingerprints_book_id
+    ON book_sync_fingerprints(book_id);
+
+CREATE INDEX IF NOT EXISTS idx_book_sync_fingerprints_external
+    ON book_sync_fingerprints(source_system, external_book_id);
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON book_sync_fingerprints TO gacs_user;
+GRANT USAGE, SELECT ON SEQUENCE book_sync_fingerprints_id_seq TO gacs_user;

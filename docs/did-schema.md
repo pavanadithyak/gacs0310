@@ -5,8 +5,8 @@
 The DID (Dynamic Intelligent Distribution) integration syncs engagement signals from Smart DID's video platform into GACS, enabling priority-based video generation.
 
 **Key Design Decisions:**
-- `books.id` is UUID (verified in migration 001)
-- All foreign keys to `books(id)` use `UUID` type (migrations 001, 007, 011, 013, 014)
+- `books.book_id` is UUID (verified in the base books schema)
+- All foreign keys to `books(book_id)` use `UUID` type (migrations 001, 007, 011, 013, 014)
 - Sync/state table own PKs use `BIGSERIAL` (never shared externally)
 - GACS owns canonical book metadata; Smart DID contributes time-series signals only
 - Smart DID contributions are **never** used to overwrite canonical fields (title, author, description)
@@ -22,7 +22,7 @@ Core engagement signals for each book's DID presence.
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
 | `id` | BIGSERIAL | NO | — | PK (own sequence) |
-| `book_id` | **UUID** | NO | — | FK → books(id) ON DELETE CASCADE |
+| `book_id` | **UUID** | NO | — | FK → books(book_id) ON DELETE CASCADE |
 | `source_system` | VARCHAR(50) | NO | 'smart_did' | Source identifier |
 | `request_count` | INT | NO | 0 | Total Smart DID requests |
 | `ranking_score` | NUMERIC(8,4) | NO | 0 | Relevance ranking (0–1) |
@@ -52,7 +52,7 @@ Maps Smart DID external book identifiers to internal GACS UUID book IDs.
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
 | `id` | BIGSERIAL | NO | — | PK |
-| `book_id` | **UUID** | NO | — | FK → books(id) ON DELETE CASCADE |
+| `book_id` | **UUID** | NO | — | FK → books(book_id) ON DELETE CASCADE |
 | `source_system` | VARCHAR(50) | NO | — | e.g. 'smart_did' |
 | `external_book_id` | VARCHAR(200) | NO | — | Smart DID's alpas_book_id |
 | `first_seen_at` | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP | First mapping |
@@ -102,7 +102,7 @@ Audit trail for sync operations.
 | `source_system` | VARCHAR(50) | NO | — | e.g. 'smart_did' |
 | `sync_type` | VARCHAR(50) | NO | — | e.g. 'incremental_sync' |
 | `status` | VARCHAR(50) | NO | — | success/failed/skipped |
-| `book_id` | UUID | YES | NULL | FK → books(id), nullable |
+| `book_id` | UUID | YES | NULL | FK → books(book_id), nullable |
 | `external_book_id` | VARCHAR(200) | YES | NULL | External ID |
 | `payload_json` | JSONB | YES | NULL | Raw payload |
 | `error_message` | TEXT | YES | NULL | Error details |
@@ -127,7 +127,7 @@ Tracks playback state, URLs, and retry information from Smart DID.
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
 | `id` | BIGSERIAL | NO | — | PK |
-| `book_id` | **UUID** | NO | — | FK → books(id) ON DELETE CASCADE |
+| `book_id` | **UUID** | NO | — | FK → books(book_id) ON DELETE CASCADE |
 | `status` | VARCHAR(50) | YES | — | Video status |
 | `video_url` | TEXT | YES | — | Smart DID video URL |
 | `subtitle_url` | TEXT | YES | — | Subtitle URL |
@@ -153,7 +153,7 @@ Time-series engagement data (async webhook target).
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
 | `id` | BIGSERIAL | NO | — | PK |
-| `book_id` | **UUID** | NO | — | FK → books(id) ON DELETE CASCADE |
+| `book_id` | **UUID** | NO | — | FK → books(book_id) ON DELETE CASCADE |
 | `source_system` | VARCHAR(50) | NO | — | Source identifier |
 | `request_count` | INT | NO | 0 | Request count |
 | `ranking_score` | NUMERIC(8,4) | YES | — | Ranking score |
@@ -174,7 +174,7 @@ Recommendation context from Smart DID (async webhook target).
 | Column | Type | Null | Default | Notes |
 |--------|------|------|---------|-------|
 | `id` | BIGSERIAL | NO | — | PK |
-| `book_id` | **UUID** | NO | — | FK → books(id) ON DELETE CASCADE |
+| `book_id` | **UUID** | NO | — | FK → books(book_id) ON DELETE CASCADE |
 | `source_system` | VARCHAR(50) | NO | — | Source identifier |
 | `age_group` | VARCHAR(50) | YES | — | Curated age segment |
 | `sort_order` | VARCHAR(50) | YES | — | Display priority |
@@ -219,7 +219,7 @@ PostgreSQL function that recomputes `generation_priority_score` and `request_cou
 
 ## Known Assumptions (Verify Before Deploy)
 
-1. **`books.id` is UUID** — confirmed by migration 001
+1. **`books.book_id` is UUID** — confirmed by the base books schema
 2. **`gen_random_uuid()` available** — PostgreSQL 13+ builtin
 3. **`pg_cron` extension installed** — required for migration 009
 4. **`gacs_user` role exists** — all GRANT statements target this role

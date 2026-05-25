@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import morgan from 'morgan';
 import redis from './queue/redis.client.js';
 import pool from './db/client.js';
 import webhookRouter from './webhooks/index.js';
@@ -7,6 +8,7 @@ import { validateEnv } from './webhooks/did.handler.js';
 import { buildSyncEventWorker } from './sync/did/sync-event.worker.js';
 import { featuresRouter, buildFeatureComputationWorker } from './features/index.js';
 import { buildInferenceWorker } from './ml/inference.worker.js';
+import { inferenceRouter, metricsRouter } from './api/index.js';
 
 try {
   validateEnv();
@@ -19,14 +21,18 @@ try {
 const app = express();
 const port = process.env.WEBHOOK_PORT || 3000;
 
-app.use(express.raw({ type: 'application/json' }));
+app.use(morgan('combined'));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.use('/webhooks', webhookRouter);
+app.use('/webhooks', express.raw({ type: 'application/json' }), webhookRouter);
+app.use(express.json());
+
 app.use('/api/features', featuresRouter);
+app.use('/api', inferenceRouter);
+app.use('/api', metricsRouter);
 
 let server;
 const activeWorkers = [];

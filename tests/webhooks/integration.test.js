@@ -16,8 +16,8 @@ jest.unstable_mockModule('../../src/queue/bullmq.client.js', () => {
   const mockAdd = jest.fn().mockResolvedValue({ id: 'mock-job-id' });
   const q = { add: mockAdd, on: jest.fn() };
   return {
-    default: { add: mockAdd, deadLetterQueue: q, reconciliationQueue: q, videoRegenerationQueue: q, videoRefreshQueue: q, syncAlertQueue: q, asyncEngagementQueue: q, didIncrementalSyncQueue: q },
-    deadLetterQueue: q, reconciliationQueue: q, videoRegenerationQueue: q, videoRefreshQueue: q, syncAlertQueue: q, asyncEngagementQueue: q, didIncrementalSyncQueue: q
+    default: { add: mockAdd, deadLetterQueue: q, reconciliationQueue: q, videoRegenerationQueue: q, videoRefreshQueue: q, syncAlertQueue: q, asyncEngagementQueue: q, didIncrementalSyncQueue: q, featureComputationQueue: q, inferenceQueue: q },
+    deadLetterQueue: q, reconciliationQueue: q, videoRegenerationQueue: q, videoRefreshQueue: q, syncAlertQueue: q, asyncEngagementQueue: q, didIncrementalSyncQueue: q, featureComputationQueue: q, inferenceQueue: q
   };
 });
 

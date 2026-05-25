@@ -17,5 +17,14 @@ CREATE INDEX idx_ml_prediction_log_model_version ON ml_prediction_log(model_vers
 CREATE INDEX idx_ml_prediction_log_inference_timestamp ON ml_prediction_log(inference_timestamp DESC);
 CREATE INDEX idx_ml_prediction_log_actual_null ON ml_prediction_log(book_id) WHERE actual_priority_score IS NULL;
 
+COMMENT ON COLUMN ml_prediction_log.id IS 'Primary key, auto-incrementing';
+COMMENT ON COLUMN ml_prediction_log.book_id IS 'Reference to canonical books table';
+COMMENT ON COLUMN ml_prediction_log.model_version IS 'Semver of the ML model version used for inference';
+COMMENT ON COLUMN ml_prediction_log.predicted_priority_score IS 'ML model output priority score';
+COMMENT ON COLUMN ml_prediction_log.actual_priority_score IS 'Post-hoc actual priority (populated by feedback loop)';
+COMMENT ON COLUMN ml_prediction_log.feature_vector_id IS 'Reference to the feature vector used for this prediction';
+COMMENT ON COLUMN ml_prediction_log.inference_timestamp IS 'When inference was performed';
+COMMENT ON COLUMN ml_prediction_log.created_at IS 'Row creation timestamp';
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON ml_prediction_log TO gacs_user;
 GRANT USAGE ON SEQUENCE ml_prediction_log_id_seq TO gacs_user;

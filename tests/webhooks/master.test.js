@@ -20,6 +20,8 @@ jest.unstable_mockModule('../../src/queue/bullmq.client.js', () => {
       syncAlertQueue: mockQueue,
       asyncEngagementQueue: mockQueue,
       didIncrementalSyncQueue: mockQueue,
+      featureComputationQueue: mockQueue,
+      inferenceQueue: mockQueue,
     },
     deadLetterQueue: mockQueue,
     reconciliationQueue: mockQueue,
@@ -28,6 +30,8 @@ jest.unstable_mockModule('../../src/queue/bullmq.client.js', () => {
     syncAlertQueue: mockQueue,
     asyncEngagementQueue: mockQueue,
     didIncrementalSyncQueue: mockQueue,
+    featureComputationQueue: mockQueue,
+    inferenceQueue: mockQueue,
   };
 });
 

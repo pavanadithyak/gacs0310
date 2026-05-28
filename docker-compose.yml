@@ -1,0 +1,78 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gacs_staging
+      POSTGRES_USER: gacs_user
+      POSTGRES_PASSWORD: gacs_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gacs_user -d gacs_staging"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://gacs_user:gacs_pass@postgres:5432/gacs_staging
+      REDIS_URL: redis://redis:6379
+      DID_WEBHOOK_SECRET: dev-webhook-secret
+      INFERENCE_API_KEY: dev-api-key
+      SYNC_WORKER_ENABLED: "true"
+      FEATURE_WORKER_ENABLED: "true"
+      INFERENCE_WORKER_ENABLED: "true"
+      MODEL_PATH: data/models/ml
+      FEATURE_COMPUTE_INTERVAL_MS: "86400000"
+      INFERENCE_INTERVAL_MS: "86400000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ml_models:/app/data/models/ml
+
+  python-train:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    environment:
+      DATABASE_URL: postgresql://gacs_user:gacs_pass@postgres:5432/gacs_staging
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ml_models:/app/data/models/ml
+      - training_data:/app/data
+    profiles:
+      - training
+    command: ["bash", "-c", "node scripts/export-ml-training-data.js && python src/ml/train_pipeline.py && python src/ml/evaluate.py"]
+
+volumes:
+  postgres_data:
+  ml_models:
+  training_data:

@@ -1,12 +1,15 @@
 import pool from '../db/client.js';
 import registry from './feature-registry.json' with { type: 'json' };
+import { FeatureValidator } from './feature-validator.js';
 
 const FEATURES = registry.features;
 const FEATURE_VERSION = registry.version;
+const validator = new FeatureValidator();
 
 export class FeatureComputationService {
-  constructor() {
+  constructor(options = {}) {
     this.featureVersion = FEATURE_VERSION;
+    this.skipValidation = options.skipValidation === true;
   }
 
   async computeForBook(bookId) {
@@ -54,6 +57,14 @@ export class FeatureComputationService {
     for (const feat of FEATURES) {
       featureVector[feat.feature_name] = this._computeFeature(feat, sourceData);
     }
+
+    if (!this.skipValidation) {
+      const { valid, errors, warnings } = validator.validate(featureVector);
+      if (!valid) {
+        console.warn(`[FeatureValidator] bookId=${bookId} invalid:`, errors.join('; '), warnings.join('; '));
+      }
+    }
+
     return featureVector;
   }
 
